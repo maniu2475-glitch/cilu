@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#12161f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="词炉">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="shortcut icon" href="icons/icon-192.png" type="image/png">
+<title>词炉 · 单词维护器</title>
+<style>
+:root{
+  --bg:#0f131b; --bg2:#161c27; --card:#1c2433; --card2:#222c3e;
+  --line:#2c384d; --txt:#e8edf6; --dim:#8b9ab2; --dim2:#5f6d84;
+  --acc:#4ea1ff; --acc2:#2d7fe0; --ok:#3ddc97; --warn:#ffb84d; --bad:#ff6b6b;
+  --r:16px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:radial-gradient(120% 80% at 50% 0%,#1a2231 0%,var(--bg) 55%) fixed;
+  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:16px;line-height:1.55;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+#app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding-top:var(--safe-t)}
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 10px;position:sticky;top:0;z-index:20;
+  background:linear-gradient(180deg,rgba(15,19,27,.97),rgba(15,19,27,.82) 70%,transparent);
+  backdrop-filter:blur(8px);
+}
+header h1{font-size:19px;margin:0;font-weight:650;letter-spacing:.5px}
+header h1 small{font-size:11px;color:var(--dim2);font-weight:400;margin-left:6px;letter-spacing:0}
+.hbtn{background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:11px;
+  padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+.hbtn:active{transform:scale(.96)}
+main{flex:1;padding:4px 16px calc(96px + var(--safe-b))}
+.view{display:none;animation:fade .22s ease}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- 底部导航 ---------- */
+nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  display:flex;justify-content:center;gap:2px;
+  padding:8px 10px calc(8px + var(--safe-b));
+  background:linear-gradient(0deg,rgba(15,19,27,.99),rgba(15,19,27,.9) 65%,transparent);
+  backdrop-filter:blur(10px);
+}
+nav button{
+  flex:1;max-width:110px;background:none;border:0;color:var(--dim2);
+  font-family:inherit;font-size:10.5px;padding:5px 2px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:12px;
+  transition:color .15s;
+}
+nav button .ic{font-size:19px;line-height:1;filter:grayscale(1) opacity(.6);transition:.15s}
+nav button.on{color:var(--acc)}
+nav button.on .ic{filter:none;transform:translateY(-1px)}
+nav button .bdg{
+  position:absolute;transform:translate(14px,-6px);background:var(--bad);color:#fff;
+  font-size:9px;min-width:15px;height:15px;line-height:15px;border-radius:8px;padding:0 3px;
+  font-weight:700;
+}
+nav button{position:relative}
+
+/* ---------- 通用卡片 ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card.tight{padding:13px}
+.row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+.muted{color:var(--dim);font-size:13px}
+.small{font-size:12px;color:var(--dim2)}
+h2.sec{font-size:13px;color:var(--dim2);font-weight:600;letter-spacing:1.2px;
+  text-transform:uppercase;margin:22px 4px 10px}
+h2.sec:first-child{margin-top:10px}
+
+/* 统计格 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 6px;text-align:center}
+.stat b{display:block;font-size:21px;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{font-size:10.5px;color:var(--dim2)}
+.stat.hot b{color:var(--acc)}
+.stat.due b{color:var(--warn)}
+.stat.weak b{color:var(--bad)}
+
+/* 进度条 */
+.bar{height:7px;border-radius:4px;background:#0c1018;overflow:hidden;margin-top:9px}
+.bar>i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width .3s}
+.bar.ok>i{background:linear-gradient(90deg,#25a97a,var(--ok))}
+.bar.warn>i{background:linear-gradient(90deg,#c98a2e,var(--warn))}
+
+/* 按钮 */
+.btn{
+  display:block;width:100%;padding:15px;border-radius:14px;border:0;cursor:pointer;
+  font-family:inherit;font-size:16px;font-weight:650;
+  background:linear-gradient(180deg,var(--acc),var(--acc2));color:#fff;
+  box-shadow:0 6px 18px -8px rgba(78,161,255,.8);
+  transition:transform .12s,opacity .12s;
+}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line);box-shadow:none}
+.btn.ok{background:linear-gradient(180deg,#41e2a0,#22a276);box-shadow:0 6px 18px -8px rgba(61,220,151,.7)}
+.btn.bad{background:linear-gradient(180deg,#ff7b7b,#d94a4a);box-shadow:0 6px 18px -8px rgba(255,107,107,.7)}
+.btn.sm{padding:11px;font-size:14px;border-radius:11px}
+.btn:disabled{opacity:.4}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ---------- 复习卡片 ---------- */
+.revwrap{display:flex;flex-direction:column;min-height:calc(100vh - 250px)}
+.revtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.pill{background:var(--card2);border:1px solid var(--line);border-radius:20px;
+  padding:4px 11px;font-size:12px;color:var(--dim)}
+.pill.tag{color:var(--acc);border-color:#2a4a72;background:#16243a}
+.pill.warn{color:var(--warn);border-color:#5a4526;background:#2a2113}
+
+.qcard{
+  background:linear-gradient(165deg,var(--card2),var(--card));border:1px solid var(--line);
+  border-radius:22px;padding:30px 22px;text-align:center;
+  min-height:230px;display:flex;flex-direction:column;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.qcard::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 50% at 50% 0%,rgba(78,161,255,.09),transparent 70%)}
+.qword{font-size:38px;font-weight:700;letter-spacing:.5px;word-break:break-word;line-height:1.25}
+.qword.cn{font-size:27px;font-weight:600}
+.qhint{font-size:13px;color:var(--dim2);margin-top:14px}
+.qsub{font-size:14px;color:var(--dim);margin-top:18px;line-height:1.7}
+.qsub em{color:var(--acc);font-style:normal}
+.ansbox{margin-top:20px;padding-top:16px;border-top:1px dashed var(--line)}
+.ansMain{font-size:20px;color:var(--ok);font-weight:600}
+.ansFam{font-size:13px;color:var(--dim);margin-top:9px}
+.ansCol{font-size:13px;color:var(--warn);margin-top:6px}
+
+/* 自评四档 */
+.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.grade button{
+  padding:12px 4px;border-radius:12px;border:1px solid var(--line);background:var(--card2);
+  color:var(--txt);font-family:inherit;cursor:pointer;transition:.13s;
+}
+.grade button b{display:block;font-size:14px}
+.grade button span{font-size:9.5px;color:var(--dim2)}
+.grade button:active{transform:scale(.95)}
+.grade button.g0{border-color:#5a4526}.grade button.g0 b{color:var(--warn)}
+.grade button.g1{border-color:#4a3a5a}.grade button.g1 b{color:#c99bff}
+.grade button.g2{border-color:#2a5a4a}.grade button.g2 b{color:var(--ok)}
+.grade button.g3{border-color:#2a4a72}.grade button.g3 b{color:var(--acc)}
+
+/* 填空 */
+.sentence{font-size:17.5px;line-height:2;text-align:left}
+.blank{display:inline-block;min-width:110px;border-bottom:2px solid var(--acc);
+  color:var(--acc);font-weight:700;text-align:center;padding:0 4px}
+.blank.ok{color:var(--ok);border-color:var(--ok)}
+.blank.bad{color:var(--bad);border-color:var(--bad)}
+.input{
+  width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+  background:#0d1219;color:var(--txt);font-family:inherit;font-size:16px;outline:none;
+}
+.input:focus{border-color:var(--acc)}
+textarea.input{resize:vertical;min-height:64px;line-height:1.55}
+
+/* 列表项 */
+.item{display:flex;gap:11px;align-items:flex-start;padding:12px;border-radius:13px;background:var(--card);border:1px solid var(--line);margin-bottom:8px}
+.item .w{font-weight:650;font-size:16px}
+.item .m{font-size:13px;color:var(--dim);margin-top:2px}
+.item .meta{font-size:11px;color:var(--dim2);margin-top:5px}
+.item .x{margin-left:auto;color:var(--dim2);background:none;border:0;font-size:18px;cursor:pointer;padding:2px 4px;font-family:inherit}
+.dot{width:7px;height:7px;border-radius:50%;margin-top:7px;flex:none}
+.dot.new{background:var(--acc)}.dot.learn{background:var(--warn)}.dot.ok{background:var(--ok)}.dot.weak{background:var(--bad)}
+
+/* 表单 */
+label.fl{display:block;font-size:12px;color:var(--dim2);margin:12px 0 6px;letter-spacing:.5px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:6px 12px;border-radius:18px;border:1px solid var(--line);background:var(--card2);
+  font-size:12.5px;color:var(--dim);cursor:pointer;font-family:inherit}
+.chip.on{background:#16243a;border-color:#2a4a72;color:var(--acc)}
+
+/* 空态 */
+.empty{text-align:center;padding:52px 24px;color:var(--dim2)}
+.empty .big{font-size:44px;margin-bottom:14px;filter:grayscale(1) opacity(.35)}
+.empty b{display:block;color:var(--dim);font-size:16px;margin-bottom:7px;font-weight:600}
+.empty p{font-size:13px;margin:0;line-height:1.7}
+
+/* toast */
+#toast{
+  position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translate(-50%,20px);
+  background:#e8edf6;color:#0f131b;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;
+  opacity:0;pointer-events:none;transition:.24s;z-index:99;max-width:82vw;text-align:center;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* 弹层 */
+.sheet{position:fixed;inset:0;z-index:60;display:none}
+.sheet.on{display:block}
+.sheet .mask{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
+.sheet .panel{
+  position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;
+  background:var(--bg2);border-radius:22px 22px 0 0;padding:20px 18px calc(24px + var(--safe-b));
+  animation:up .26s cubic-bezier(.2,.9,.3,1);max-width:560px;margin:0 auto;
+}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.sheet h3{margin:0 0 16px;font-size:17px}
+.grab{width:38px;height:4px;border-radius:3px;background:var(--line);margin:-8px auto 14px}
+
+/* 周测结果 */
+.ring{width:120px;height:120px;margin:6px auto 16px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .txt b{font-size:29px;line-height:1}
+.ring .txt span{font-size:11px;color:var(--dim2);margin-top:3px}
+
+/* 桌面端预览微调 */
+@media(min-width:600px){
+  body{background:radial-gradient(120% 80% at 50% 0%,#1a2231 0%,var(--bg) 55%) fixed}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>词炉<small>维护 · 扩展 · 激活</small></h1>
+    <button class="hbtn" id="btnMenu">☰</button>
+  </header>
+
+  <main>
+    <!-- ============ 首页 ============ -->
+    <section class="view on" id="v-home">
+      <div class="stats">
+        <div class="stat hot"><b id="sTotal">0</b><span>总词数</span></div>
+        <div class="stat due"><b id="sDue">0</b><span>待复习</span></div>
+        <div class="stat weak"><b id="sWeak">0</b><span>错词本</span></div>
+        <div class="stat"><b id="sToday">0</b><span>今日已练</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row spread">
+          <div>
+            <div style="font-weight:650;font-size:16px">今日复习队列</div>
+            <div class="small" id="dueSub">加载中…</div>
+          </div>
+          <div style="font-size:27px;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums" id="dueBig">0</div>
+        </div>
+        <div class="bar warn" id="dueBar"><i style="width:0%"></i></div>
+        <button class="btn" style="margin-top:14px" id="btnStartReview">开始维护旧词</button>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost sm" id="btnGoNew">＋ 收生词</button>
+        <button class="btn ghost sm" id="btnGoCloze">句子回填</button>
+      </div>
+
+      <h2 class="sec">今日计划</h2>
+      <div class="card tight">
+        <div class="row spread" style="margin-bottom:11px">
+          <span class="muted">旧词循环复习</span><span class="small" id="pRev">0 / 15 分</span>
+        </div>
+        <div class="row spread" style="margin-bottom:11px">
+          <span class="muted">真题生词扩展</span><span class="small" id="pNew">0 / 12 个</span>
+        </div>
+        <div class="row spread">
+          <span class="muted">句子回填激活</span><span class="small" id="pCloze">0 / 10 句</span>
+        </div>
+        <div class="small" style="margin-top:12px;line-height:1.7" id="planTip"></div>
+      </div>
+
+      <h2 class="sec">本周产出测试</h2>
+      <div class="card tight">
+        <div class="row spread">
+          <div>
+            <div style="font-weight:600;font-size:14.5px" id="quizTitle">还没测过</div>
+            <div class="small" id="quizSub" style="margin-top:3px">抽 30 词，中→英产出，80% 及格</div>
+          </div>
+          <button class="btn ghost sm" style="width:auto;padding:9px 15px" id="btnQuiz">开始</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 复习 ============ -->
+    <section class="view" id="v-review">
+      <div id="revArea"></div>
+    </section>
+
+    <!-- ============ 生词 ============ -->
+    <section class="view" id="v-new">
+      <h2 class="sec">收一个新词</h2>
+      <div class="card">
+        <label class="fl">单词 / 词组</label>
+        <input class="input" id="fWord" placeholder="recognize" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <label class="fl">中文释义</label>
+        <input class="input" id="fMean" placeholder="认出；承认">
+        <label class="fl">词族（同根词，用 / 分隔）</label>
+        <input class="input" id="fFam" placeholder="recognition / recognizable / recognized">
+        <label class="fl">固定搭配（一个就够）</label>
+        <input class="input" id="fCol" placeholder="be recognized as">
+        <label class="fl">收录理由（三条至少要占一条）</label>
+        <div class="chips" id="reasonChips">
+          <button class="chip" data-r="理解">影响理解</button>
+          <button class="chip" data-r="替换">同义替换</button>
+          <button class="chip" data-r="作文">作文能用</button>
+        </div>
+        <label class="fl">例句（用 ___ 标记挖空位置）</label>
+        <textarea class="input" id="fSent" placeholder="He was widely ___ as the father of modern physics."></textarea>
+        <button class="btn" style="margin-top:16px" id="btnAddWord">加入词库</button>
+      </div>
+
+      <h2 class="sec">词库 <span id="wbCount" style="color:var(--dim2);font-weight:400"></span></h2>
+      <div id="wbList"></div>
+    </section>
+
+    <!-- ============ 回填 ============ -->
+    <section class="view" id="v-cloze">
+      <div id="clozeArea"></div>
+    </section>
+
+    <!-- ============ 错词本 / 统计 ============ -->
+    <section class="view" id="v-weak">
+      <h2 class="sec">错词本 <span id="wkCount" style="color:var(--dim2);font-weight:400"></span></h2>
+      <div class="small" style="margin:0 4px 12px;line-height:1.7">
+        答错两次以上的词会自动进来。这里的词复习间隔压到最短，答对三次才放出。
+      </div>
+      <div id="wkList"></div>
+      <h2 class="sec">学习曲线</h2>
+      <div class="card tight" id="curveBox"></div>
+    </section>
+  </main>
+
+  <nav>
+    <button data-v="home" class="on"><span class="ic">🏠</span>今日</button>
+    <button data-v="new"><span class="ic">📥</span>收词</button>
+    <button data-v="cloze"><span class="ic">✍️</span>回填</button>
+    <button data-v="weak"><span class="ic">🔥</span>错词</button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<div class="sheet" id="sheet">
+  <div class="mask" data-close></div>
+  <div class="panel" id="sheetPanel"></div>
+</div>
+
+<script>
+"use strict";
+/* =======================================================================
+   词炉 — 单词维护器
+   调度：SM-2 简化版；存储：localStorage 单键 JSON
+   ======================================================================= */
+
+const STORE_KEY = "cilu.v1";
+const DAY = 86400000;
+
+/* ---------------- 存储层 ---------------- */
+const DEFAULTS = () => ({
+  words: [],
+  streak: { lastPlay: null, days: 0 },
+  stats: { todayDate: null, revMin: 0, newCount: 0, clozeCount: 0 },
+  quiz: { lastDate: null, lastScore: null, lastTotal: 0 },
+  dailyLog: {}   // '2026-11-10': { rev: n, new: n, cloze: n }
+});
+
+let DB = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    DB = raw ? Object.assign(DEFAULTS(), JSON.parse(raw)) : DEFAULTS();
+  } catch (e) {
+    console.warn("存储损坏，已重置", e);
+    DB = DEFAULTS();
+  }
+  // 补字段（老版本兼容）
+  DB.words.forEach(w => {
+    if (w.stage == null) w.stage = 0;
+    if (w.ease == null) w.ease = 2.5;
+    if (w.interval == null) w.interval = 0;
+    if (w.lapses == null) w.lapses = 0;
+    if (w.correctRun == null) w.correctRun = 0;
+    if (!w.due) w.due = Date.now();
+    if (!w.created) w.created = Date.now();
+    if (!w.tags) w.tags = [];
+  });
+}
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(DB));
+  } catch (e) {
+    toast("保存失败：存储空间不足");
+    console.error(e);
+  }
+}
+function uid() { return 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------------- 时间工具 ---------------- */
+const todayStr = (d = new Date()) => {
+  const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return x.toISOString().slice(0, 10);
+};
+const startOfDay = (d = new Date()) => {
+  const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime();
+};
+function ensureToday() {
+  const t = todayStr();
+  if (DB.stats.todayDate !== t) {
+    DB.stats = { todayDate: t, revMin: 0, newCount: 0, clozeCount: 0 };
+  }
+  if (!DB.dailyLog[t]) DB.dailyLog[t] = { rev: 0, new: 0, cloze: 0 };
+  return t;
+}
+function bumpToday(kind, n = 1) {
+  const t = ensureToday();
+  const map = { rev: "revMin", new: "newCount", cloze: "clozeCount" };
+  DB.stats[map[kind]] = (DB.stats[map[kind]] || 0) + n;
+  DB.dailyLog[t][kind] = (DB.dailyLog[t][kind] || 0) + n;
+  save();
+}
+
+/* ---------------- 调度引擎（SM-2 简化） ---------------- */
+/*
+  quality 四档：0 忘了 / 1 勉强 / 2 记得 / 3 秒答
+  stage 0 新词 → 1 学习中 → 2 巩固 → 3 已掌握
+*/
+const INTERVALS = [0, 1, 2, 4, 7, 12, 20, 35, 55, 80, 120]; // 天
+
+function schedule(w, quality) {
+  const now = Date.now();
+  w.lastSeen = now;
+  w.reviews = (w.reviews || 0) + 1;
+
+  if (quality === 0) {
+    // 忘了：回到学习中，lapse+1，当日再来
+    w.lapses = (w.lapses || 0) + 1;
+    w.correctRun = 0;
+    w.stage = 1;
+    w.interval = 0;
+    w.ease = Math.max(1.3, w.ease - 0.2);
+    w.due = now + 10 * 60 * 1000;         // 10 分钟后再撞一次
+    if (w.lapses >= 2) w.tags = addTag(w.tags, "weak");
+  } else if (quality === 1) {
+    // 勉强：间隔不涨，明天再见
+    w.correctRun = 0;
+    w.stage = Math.max(1, w.stage);
+    w.interval = Math.max(1, Math.round(w.interval * 0.6) || 1);
+    w.ease = Math.max(1.3, w.ease - 0.12);
+    w.due = startOfDay() + DAY;
+    if (w.lapses >= 2) w.tags = addTag(w.tags, "weak");
+  } else {
+    // 记得 / 秒答：间隔拉长
+    w.correctRun = (w.correctRun || 0) + 1;
+    w.ease = Math.min(3.0, w.ease + (quality === 3 ? 0.14 : 0.05));
+    const base = INTERVALS[Math.min(INTERVALS.length - 1, Math.max(1, w.stage + 1))] || 1;
+    let next = Math.max(1, Math.round(base * w.ease * 0.62));
+    if (quality === 3) next = Math.round(next * 1.35);
+    if (w.interval) next = Math.max(next, Math.round(w.interval * 1.25));
+    w.interval = next;
+    w.stage = Math.min(3, w.stage + 1);
+    w.due = startOfDay(now) + next * DAY + 9 * 3600 * 1000; // 未来第 next 天 09:00
+    // 弱词放出：连续答对 3 次
+    if (w.tags.includes("weak") && w.correctRun >= 3) {
+      w.tags = w.tags.filter(t => t !== "weak");
+      w.lapses = Math.max(0, w.lapses - 1);
+    }
+  }
+  return w;
+}
+function addTag(tags, t) { return tags.includes(t) ? tags : tags.concat(t); }
+
+/* 取到期队列 */
+function dueWords(limit = 999) {
+  const now = Date.now();
+  return DB.words
+    .filter(w => w.due <= now)
+    .sort((a, b) => {
+      // 弱词优先，其次到期越久越优先
+      const aw = a.tags.includes("weak") ? 1 : 0, bw = b.tags.includes("weak") ? 1 : 0;
+      if (aw !== bw) return bw - aw;
+      return a.due - b.due;
+    })
+    .slice(0, limit);
+}
+
+/* ---------------- DOM 工具 ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 1900);
+}
+function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+/* ---------------- 视图切换 ---------------- */
+const VIEW_TITLE = { home: "今日", review: "维护旧词", new: "收生词", cloze: "句子回填", weak: "错词本" };
+function go(v) {
+  $$(".view").forEach(e => e.classList.remove("on"));
+  const el = $("#v-" + v);
+  if (el) el.classList.add("on");
+  $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  window.scrollTo(0, 0);
+    if (v === "home") renderHome();
+  if (v === "new") renderWordbook();
+  if (v === "weak") renderWeak();
+  if (v === "cloze") renderCloze();
+  if (v === "review" && QZ) renderQuiz();
+}
+
+/* ---------------- 首页渲染 ---------------- */
+function renderHome() {
+  const t = ensureToday();
+  const due = dueWords();
+  const weak = DB.words.filter(w => w.tags.includes("weak"));
+
+  $("#sTotal").textContent = DB.words.length;
+  $("#sDue").textContent = due.length;
+  $("#sWeak").textContent = weak.length;
+  $("#sToday").textContent = (DB.stats.revMin || 0) + (DB.dailyLog[t] ? DB.dailyLog[t].new + DB.dailyLog[t].cloze : 0);
+
+  const totalPlan = Math.max(due.length + (DB.stats.revMin || 0), 1);
+  const pct = Math.min(100, Math.round(((DB.stats.revMin || 0) / totalPlan) * 100));
+  $("#dueBig").textContent = due.length;
+  $("#dueBar").querySelector("i").style.width = due.length === 0 ? "100%" : pct + "%";
+  $("#dueBar").className = "bar " + (due.length === 0 ? "ok" : "warn");
+  $("#dueSub").textContent = due.length
+    ? `${due.length} 个词到期待复习，其中弱词 ${due.filter(w => w.tags.includes("weak")).length} 个`
+    : (DB.words.length ? "队列已清空，今天稳了" : "词库还是空的，先去「收词」");
+
+  $("#btnStartReview").textContent = due.length ? `开始维护（${due.length}）` : "队列已清空";
+  $("#btnStartReview").disabled = due.length === 0 || DB.words.length === 0;
+
+  // 今日计划进度
+  const revDone = DB.stats.revMin || 0;
+  const newDone = DB.stats.newCount || 0;
+  const clozeDone = DB.stats.clozeCount || 0;
+  $("#pRev").textContent = `${revDone} / 15 分`;
+  $("#pNew").textContent = `${newDone} / 12 个`;
+  $("#pCloze").textContent = `${clozeDone} / 10 句`;
+  const tips = [];
+  if (revDone < 15) tips.push("旧词维护没做够，队列会越堆越多。");
+  if (newDone < 12) tips.push("真题生词还没收满，去阅读里捞。");
+  if (clozeDone < 10) tips.push("回填没做，单词只是认脸没用出来。");
+  $("#planTip").textContent = tips.length ? tips.join(" ") : "今日三项都达标了，牛马大王今天很稳。";
+
+  // 周测状态
+  const q = DB.quiz;
+  if (q.lastScore == null) {
+    $("#quizTitle").textContent = "还没测过";
+    $("#quizSub").textContent = "抽 30 词，中→英产出，80% 及格";
+  } else {
+    $("#quizTitle").textContent = `上周测：${q.lastScore}/${q.lastTotal}（${Math.round(q.lastScore / q.lastTotal * 100)}%）`;
+    const ok = q.lastScore / q.lastTotal >= 0.8;
+    $("#quizSub").textContent = ok ? "达标，按现有节奏走" : "低于 80%，复习周期该收紧了";
+    $("#quizSub").style.color = ok ? "var(--ok)" : "var(--bad)";
+  }
+
+  // 导航角标
+  const navDue = $('nav button[data-v="home"]');
+  let b = navDue.querySelector(".bdg");
+  if (due.length) {
+    if (!b) { b = document.createElement("span"); b.className = "bdg"; navDue.appendChild(b); }
+    b.textContent = due.length > 99 ? "99+" : due.length;
+  } else if (b) b.remove();
+}
+
+/* ---------------- 复习流程 ---------------- */
+let RV = null; // { queue, idx, phase:'q'|'a', mode:'en2cn'|'cn2en' }
+
+function startReview() {
+  const q = dueWords(30);
+  if (!q.length) { toast("没有到期的词"); return; }
+  RV = { queue: q, idx: 0, phase: "q", mode: "en2cn", sessionCount: 0, sessionOk: 0 };
+  go("review");
+  renderReview();
+}
+
+function renderReview() {
+  const area = $("#revArea");
+  if (!RV || RV.idx >= RV.queue.length) {
+    const okRate = RV && RV.sessionCount ? Math.round(RV.sessionOk / RV.sessionCount * 100) : 0;
+    area.innerHTML = `
+      <div class="empty" style="padding-top:34px">
+        <div class="big">✅</div>
+        <b>这一轮清完了</b>
+        <p>本轮 ${RV ? RV.sessionCount : 0} 次判断，记得率 ${okRate}%</p>
+      </div>
+      <button class="btn" id="rvAgain" style="margin-top:10px">看看还有没有到期的</button>
+      <button class="btn ghost" id="rvHome" style="margin-top:10px">回今日</button>`;
+    $("#rvAgain").onclick = () => { const d = dueWords(30); if (d.length) { RV = { queue: d, idx: 0, phase: "q", mode: "en2cn", sessionCount: 0, sessionOk: 0 }; renderReview(); } else toast("队列空了"); };
+    $("#rvHome").onclick = () => go("home");
+    return;
+  }
+
+  const w = RV.queue[RV.idx];
+  const isEn = RV.mode === "en2cn";
+  const progress = `${RV.idx + 1}/${RV.queue.length}`;
+  const stageName = ["新", "学习中", "巩固", "已掌握"][w.stage] || "新";
+  const weak = w.tags.includes("weak");
+
+  let html = `
+  <div class="revwrap">
+    <div class="revtop">
+      <span class="pill">${progress}</span>
+      <span class="pill ${weak ? "warn" : ""}">${weak ? "🔥 弱词" : stageName} · 间隔 ${w.interval || 0} 天</span>
+      <button class="hbtn" id="rvQuit" style="padding:5px 10px">退出</button>
+    </div>
+    <div class="qcard">
+      <div class="qword ${isEn ? "" : "cn"}">${esc(isEn ? w.word : w.mean)}</div>
+      ${isEn
+        ? `<div class="qhint">先自己想中文，再点开核对</div>`
+        : `<div class="qhint">中 → 英产出：想英文原词</div>`}
+      <div class="ansbox" id="ansBox" style="display:none">
+        <div class="ansMain">${esc(isEn ? w.mean : w.word)}</div>
+        ${w.family ? `<div class="ansFam">词族：${esc(w.family)}</div>` : ""}
+        ${w.col ? `<div class="ansCol">搭配：${esc(w.col)}</div>` : ""}
+        ${w.sentence ? `<div class="qsub" style="font-size:13px;margin-top:10px">${esc(w.sentence)}</div>` : ""}
+      </div>
+    </div>
+    <div id="rvCtl" style="margin-top:16px"></div>
+  </div>`;
+  area.innerHTML = html;
+  $("#rvQuit").onclick = () => go("home");
+
+  const ctl = $("#rvCtl");
+  if (RV.phase === "q") {
+    ctl.innerHTML = `<button class="btn" id="rvShow">显示答案</button>`;
+    $("#rvShow").onclick = () => { RV.phase = "a"; $("#ansBox").style.display = "block"; renderGrade(w); };
+  } else {
+    $("#ansBox").style.display = "block";
+    renderGrade(w);
+  }
+
+  function renderGrade(w) {
+    ctl.innerHTML = `
+      <div class="small" style="text-align:center;margin-bottom:9px">按真实情况选，别骗自己</div>
+      <div class="grade">
+        <button class="g0" data-q="0"><b>忘了</b><span>10 分钟后</span></button>
+        <button class="g1" data-q="1"><b>勉强</b><span>明天</span></button>
+        <button class="g2" data-q="2"><b>记得</b><span>正常拉长</span></button>
+        <button class="g3" data-q="3"><b>秒答</b><span>加倍拉长</span></button>
+      </div>`;
+    ctl.querySelectorAll("[data-q]").forEach(btn => {
+      btn.onclick = () => gradeWord(w, +btn.dataset.q);
+    });
+  }
+}
+
+function gradeWord(w, q) {
+  const before = w.due;
+  schedule(w, q);
+  RV.sessionCount++;
+  if (q >= 2) RV.sessionOk++;
+  bumpToday("rev", 1);
+  vibrate(q >= 2 ? 12 : 25);
+  save();
+
+  // 如果"忘了"，立刻把词插到队列后面重撞
+  if (q === 0) {
+    RV.queue.push(w);
+  }
+  RV.idx++;
+  RV.phase = "q";
+  // 交替模式：同一个词下一次换方向（这里简单按索引交替）
+  RV.mode = RV.idx % 2 === 0 ? "en2cn" : "cn2en";
+  renderReview();
+  renderHome();
+}
+
+/* ---------------- 收词 ---------------- */
+let curReasons = new Set();
+
+function initNewForm() {
+  const chips = $$("#reasonChips .chip");
+  chips.forEach(c => {
+    c.onclick = () => {
+      const r = c.dataset.r;
+      if (curReasons.has(r)) { curReasons.delete(r); c.classList.remove("on"); }
+      else { curReasons.add(r); c.classList.add("on"); }
+    };
+  });
+  $("#btnAddWord").onclick = addWord;
+}
+
+function addWord() {
+  const word = $("#fWord").value.trim();
+  const mean = $("#fMean").value.trim();
+  if (!word) { toast("单词不能空"); return; }
+  if (!mean) { toast("释义不能空"); return; }
+  if (curReasons.size === 0) { toast("三条理由至少选一条；都不满足就别收"); return; }
+
+  if (DB.words.some(w => w.word.toLowerCase() === word.toLowerCase())) {
+    toast("这个词已经在库里了");
+    return;
+  }
+  const now = Date.now();
+  const w = {
+    id: uid(), word, mean,
+    family: $("#fFam").value.trim(),
+    col: $("#fCol").value.trim(),
+    sentence: $("#fSent").value.trim(),
+    stage: 0, ease: 2.5, interval: 0, lapses: 0, correctRun: 0,
+    due: now, created: now, reviews: 0,
+    tags: Array.from(curReasons)
+  };
+  DB.words.push(w);
+  bumpToday("new", 1);
+  save();
+  vibrate(15);
+
+  $("#fWord").value = ""; $("#fMean").value = ""; $("#fFam").value = "";
+  $("#fCol").value = ""; $("#fSent").value = "";
+  curReasons.clear();
+  $$("#reasonChips .chip").forEach(c => c.classList.remove("on"));
+  $("#fWord").focus();
+  toast("已收录，进入今日复习队列");
+  renderWordbook();
+  renderHome();
+}
+
+function renderWordbook() {
+  const list = $("#wbList");
+  const kw = (window.__wbFilter || "");
+  const arr = DB.words.slice().sort((a, b) => b.created - a.created);
+  $("#wbCount").textContent = arr.length ? `(${arr.length})` : "";
+  if (!arr.length) {
+    list.innerHTML = `<div class="empty"><div class="big">📥</div><b>词库是空的</b><p>从真题里捞一个影响理解的词，填进来。</p></div>`;
+    return;
+  }
+  list.innerHTML = arr.map(w => {
+    const cls = w.tags.includes("weak") ? "weak" : w.stage === 0 ? "new" : w.stage >= 3 ? "ok" : "learn";
+    const dueTxt = w.due <= Date.now() ? "到期" : "还有 " + Math.ceil((w.due - Date.now()) / DAY) + " 天";
+    return `<div class="item">
+      <span class="dot ${cls}"></span>
+      <div style="min-width:0;flex:1">
+        <div class="w">${esc(w.word)}</div>
+        <div class="m">${esc(w.mean)}</div>
+        <div class="meta">${w.family ? "词族 " + esc(w.family) + " · " : ""}${dueTxt} · 间隔 ${w.interval || 0} 天 · 错 ${w.lapses || 0} 次</div>
+      </div>
+      <button class="x" data-del="${w.id}">✕</button>
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-del]").forEach(b => {
+    b.onclick = () => {
+      const id = b.dataset.del;
+      const w = DB.words.find(x => x.id === id);
+      if (!w) return;
+      if (!confirm(`删除「${w.word}」？学习记录一起清掉。`)) return;
+      DB.words = DB.words.filter(x => x.id !== id);
+      save(); renderWordbook(); renderHome(); toast("已删除");
+    };
+  });
+}
+
+/* ---------------- 句子回填 ---------------- */
+let CZ = null;
+
+function renderCloze() {
+  ensureToday();
+  const withSent = DB.words.filter(w => w.sentence && w.sentence.includes("___"));
+  const area = $("#clozeArea");
+
+  if (!withSent.length) {
+    area.innerHTML = `<div class="empty"><div class="big">✍️</div><b>还没有带例句的词</b>
+      <p>去「收词」时填一句带 ___ 的真题原句，回填才有东西练。</p></div>
+      <button class="btn" id="czGo">去收词</button>`;
+    $("#czGo").onclick = () => go("new");
+    return;
+  }
+  if (!CZ || CZ.done === true) {
+    const pool = shuffle(withSent.slice()).slice(0, 10);
+    CZ = { pool, idx: 0, right: 0, done: false, revealed: false };
+  }
+  if (CZ.idx >= CZ.pool.length) { CZ.done = true; renderCloze(); return; }
+
+  const w = CZ.pool[CZ.idx];
+  const parts = w.sentence.split("___");
+  area.innerHTML = `
+    <div class="revtop" style="margin-bottom:12px">
+      <span class="pill">${CZ.idx + 1}/${CZ.pool.length}</span>
+      <span class="pill">对 ${CZ.right}</span>
+    </div>
+    <div class="card" style="padding:22px 18px">
+      <div class="sentence">${esc(parts[0])}<span class="blank" id="blank">?</span>${esc(parts[1] || "")}</div>
+    </div>
+    <input class="input" id="czInput" placeholder="填词，注意变形和搭配" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+    <div id="czFb" style="margin-top:12px"></div>
+    <button class="btn" style="margin-top:14px" id="czSubmit">核对</button>
+    <button class="btn ghost" style="margin-top:10px" id="czShowHint">看提示</button>
+  `;
+  const inp = $("#czInput");
+  const fb = $("#czFb");
+  inp.focus();
+
+  $("#czShowHint").onclick = () => {
+    fb.innerHTML = `<div class="small" style="line-height:1.8">中文：${esc(w.mean)}${w.family ? "<br>词族：" + esc(w.family) : ""}${w.col ? "<br>搭配：" + esc(w.col) : ""}</div>`;
+  };
+
+  const doSubmit = () => {
+    const val = inp.value.trim();
+    const ok = normEq(val, w.word);
+    bumpToday("cloze", 1);
+    if (ok) { CZ.right++; vibrate(12); } else vibrate(30);
+    $("#blank").textContent = w.word;
+    $("#blank").className = "blank " + (ok ? "ok" : "bad");
+    fb.innerHTML = `<div class="ansbox" style="border-top:1px dashed var(--line);margin-top:0;padding-top:12px">
+      <div class="ansMain" style="font-size:15px">${ok ? "✅ 对了" : "❌ 你填的是「" + esc(val || "空") + "」"}</div>
+      <div class="ansFam">${esc(w.mean)}</div>
+      ${w.col ? `<div class="ansCol">搭配：${esc(w.col)}</div>` : ""}
+    </div>`;
+    const btn = $("#czSubmit");
+    btn.textContent = CZ.idx + 1 >= CZ.pool.length ? "看结果" : "下一句";
+    btn.onclick = () => { CZ.idx++; renderCloze(); };
+    $("#czShowHint").style.display = "none";
+    inp.disabled = true;
+  };
+  $("#czSubmit").onclick = doSubmit;
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (!inp.disabled) doSubmit(); } };
+}
+
+function normEq(a, b) {
+  const n = s => s.toLowerCase().replace(/[^a-z]/g, "");
+  if (!n(a)) return false;
+  return n(a) === n(b) || n(a).includes(n(b)) || n(b).includes(n(a));
+}
+
+/* ---------------- 错词本 ---------------- */
+function renderWeak() {
+  const weak = DB.words.filter(w => w.tags.includes("weak")).sort((a, b) => b.lapses - a.lapses);
+  $("#wkCount").textContent = weak.length ? `(${weak.length})` : "";
+  const list = $("#wkList");
+  if (!weak.length) {
+    list.innerHTML = `<div class="empty"><div class="big">🔥</div><b>错词本是空的</b><p>答错两次的词会自动进来。空的说明记忆稳。</p></div>`;
+  } else {
+    list.innerHTML = weak.map(w => `<div class="item">
+      <span class="dot weak"></span>
+      <div style="min-width:0;flex:1">
+        <div class="w">${esc(w.word)}</div>
+        <div class="m">${esc(w.mean)}</div>
+        <div class="meta">错 ${w.lapses} 次 · 连对 ${w.correctRun || 0} 次 · 间隔 ${w.interval || 0} 天</div>
+      </div>
+      <button class="x" data-un="${w.id}" title="强制放出">↺</button>
+    </div>`).join("");
+    list.querySelectorAll("[data-un]").forEach(b => {
+      b.onclick = () => {
+        const w = DB.words.find(x => x.id === b.dataset.un);
+        if (!w) return;
+        w.tags = w.tags.filter(t => t !== "weak");
+        w.lapses = 0; w.correctRun = 0;
+        w.due = Date.now();
+        save(); renderWeak(); renderHome(); toast("已放出，回到主队列");
+      };
+    });
+  }
+
+  // 学习曲线：最近 14 天
+  const box = $("#curveBox");
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * DAY);
+    const k = todayStr(d);
+    const rec = DB.dailyLog[k] || { rev: 0, new: 0, cloze: 0 };
+    days.push({ k, n: rec.rev + rec.new + rec.cloze, d: k.slice(5) });
+  }
+  const max = Math.max(1, ...days.map(d => d.n));
+  box.innerHTML = `<div style="display:flex;align-items:flex-end;gap:4px;height:88px">
+    ${days.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px" title="${d.k}: ${d.n}">
+      <div style="width:100%;height:${Math.max(3, Math.round(d.n / max * 66))}px;border-radius:4px 4px 2px 2px;
+        background:${d.n ? "linear-gradient(180deg,var(--acc),var(--acc2))" : "#0c1018"}"></div>
+      <span style="font-size:8.5px;color:var(--dim2);transform:rotate(-45deg);white-space:nowrap">${d.d}</span>
+    </div>`).join("")}
+  </div>
+  <div class="small" style="margin-top:14px;text-align:center">最近 14 天练习量（复习+收词+回填）</div>`;
+}
+
+/* ---------------- 周测 ---------------- */
+function startQuiz() {
+  const all = DB.words.slice();
+  if (all.length < 5) {
+    toast("至少要有 5 个词才能测");
+    return;
+  }
+  // 优先抽已学过的词；不够就用新词补，保证周测随时可做
+  const learned = shuffle(all.filter(w => w.stage >= 1));
+  const fresh = shuffle(all.filter(w => w.stage < 1));
+  const pool = learned.concat(fresh);
+  const pick = pool.slice(0, Math.min(30, pool.length));
+  QZ = { pool: pick, idx: 0, right: 0, done: false };
+  RV = null;                     // 清掉复习会话，避免视图串味
+  go("review");
+  renderQuiz();
+}
+
+let QZ = null;
+function renderQuiz() {
+  const area = $("#revArea");
+  if (!QZ) { go("home"); return; }
+  if (QZ.idx >= QZ.pool.length) {
+    // 出结果
+    const pct = Math.round(QZ.right / QZ.pool.length * 100);
+    DB.quiz = { lastDate: todayStr(), lastScore: QZ.right, lastTotal: QZ.pool.length };
+    const pass = pct >= 80;
+    if (!pass) {
+      // 收紧：给所有词缩短间隔
+      DB.words.forEach(w => {
+        if (w.interval > 1) w.interval = Math.max(1, Math.round(w.interval * 0.75));
+        if (w.due > Date.now() + w.interval * DAY) w.due = Date.now() + w.interval * DAY;
+      });
+    }
+    save();
+    const C = 2 * Math.PI * 50;
+    area.innerHTML = `
+      <div class="empty" style="padding-top:20px">
+        <div class="big">${pass ? "🏆" : "📉"}</div>
+        <b>产出测试 ${QZ.right}/${QZ.pool.length}（${pct}%）</b>
+        <p>${pass ? "达标。按现有节奏继续，别松。" : "低于 80%，所有词的复习间隔已收紧 25%。"}</p>
+      </div>
+      <div class="ring">
+        <svg width="120" height="120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#2c384d" stroke-width="9"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="${pass ? "#3ddc97" : "#ff6b6b"}" stroke-width="9"
+            stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/>
+        </svg>
+        <div class="txt"><b>${pct}%</b><span>正确率</span></div>
+      </div>
+      <button class="btn" id="qzHome">回今日</button>`;
+    $("#qzHome").onclick = () => { QZ = null; go("home"); };
+    return;
+  }
+
+  const w = QZ.pool[QZ.idx];
+  area.innerHTML = `
+    <div class="revtop">
+      <span class="pill">${QZ.idx + 1}/${QZ.pool.length}</span>
+      <span class="pill">对 ${QZ.right}</span>
+      <button class="hbtn" id="qzQuit" style="padding:5px 10px">退出</button>
+    </div>
+    <div class="qcard">
+      <div class="qword cn">${esc(w.mean)}</div>
+      <div class="qhint">中 → 英，拼出原词</div>
+    </div>
+    <input class="input" style="margin-top:14px" id="qzIn" placeholder="输入英文" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+    <div id="qzFb" style="margin-top:10px"></div>
+    <button class="btn" style="margin-top:14px" id="qzGo">确认</button>`;
+  const inp = $("#qzIn");
+  inp.focus();
+  $("#qzQuit").onclick = () => { QZ = null; go("home"); };
+
+  const submit = () => {
+    if (inp.disabled) { QZ.idx++; renderQuiz(); return; }
+    const ok = normEq(inp.value, w.word);
+    if (ok) QZ.right++;
+    inp.disabled = true;
+    $("#qzFb").innerHTML = `<div class="ansbox" style="margin-top:0;padding-top:10px;border-top:0">
+      <div class="ansMain" style="font-size:16px;color:${ok ? "var(--ok)" : "var(--bad)"}">${ok ? "✅" : "❌"} 正确答案：${esc(w.word)}</div>
+    </div>`;
+    vibrate(ok ? 12 : 30);
+    const b = $("#qzGo");
+    b.textContent = QZ.idx + 1 >= QZ.pool.length ? "看结果" : "下一词";
+  };
+  $("#qzGo").onclick = submit;
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (inp.disabled) { QZ.idx++; renderQuiz(); } else submit(); } };
+}
+
+/* ---------------- 工具 ---------------- */
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------------- 菜单 / 导入导出 ---------------- */
+function openMenu() {
+  const s = $("#sheet"), p = $("#sheetPanel");
+  p.innerHTML = `
+    <div class="grab"></div>
+    <h3>词炉</h3>
+    <div class="small" style="line-height:1.8;margin-bottom:16px">
+      共 ${DB.words.length} 词 · 存储在本机浏览器，不上传。<br>
+      建议定期导出备份，换手机要用的。
+    </div>
+    <button class="btn ghost sm" id="mExport" style="margin-bottom:10px">导出备份（JSON）</button>
+    <button class="btn ghost sm" id="mImport" style="margin-bottom:10px">导入备份</button>
+    <button class="btn ghost sm" id="mSeed" style="margin-bottom:10px">装一套示例词（12 个高频词）</button>
+    <button class="btn bad sm" id="mReset" style="margin-bottom:10px">清空全部数据</button>
+    <button class="btn sm" id="mClose" data-close>关闭</button>
+    <input type="file" id="mFile" accept=".json,application/json" style="display:none">
+  `;
+  s.classList.add("on");
+
+  $("#mClose").onclick = closeMenu;
+  p.querySelectorAll("[data-close]").forEach(e => e.onclick = closeMenu);
+
+  $("#mExport").onclick = () => {
+    const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `词炉备份-${todayStr()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast("已导出");
+  };
+  $("#mImport").onclick = () => $("#mFile").click();
+  $("#mFile").onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const obj = JSON.parse(r.result);
+        if (!obj.words || !Array.isArray(obj.words)) throw new Error("格式不对");
+        if (!confirm(`导入 ${obj.words.length} 个词？会覆盖当前数据。`)) return;
+        DB = Object.assign(DEFAULTS(), obj);
+        load2(); save(); closeMenu(); go("home"); renderHome();
+        toast("导入完成");
+      } catch (err) {
+        toast("导入失败：文件格式不对");
+      }
+    };
+    r.readAsText(f);
+  };
+  $("#mSeed").onclick = () => {
+    if (!confirm("装 12 个示例词？不会覆盖已有词。")) return;
+    seedDemo();
+    closeMenu(); go("home");
+  };
+  $("#mReset").onclick = () => {
+    if (!confirm("清空全部单词和记录？这操作不可恢复，建议先导出。")) return;
+    if (!confirm("再确认一次：真的清空？")) return;
+    DB = DEFAULTS();
+    save(); closeMenu(); go("home"); renderHome();
+    toast("已清空");
+  };
+}
+function load2() {
+  DB.words.forEach(w => {
+    if (w.stage == null) w.stage = 0;
+    if (w.ease == null) w.ease = 2.5;
+    if (w.interval == null) w.interval = 0;
+    if (w.lapses == null) w.lapses = 0;
+    if (w.correctRun == null) w.correctRun = 0;
+    if (!w.due) w.due = Date.now();
+    if (!w.tags) w.tags = [];
+  });
+}
+function closeMenu() { $("#sheet").classList.remove("on"); }
+
+/* ---------------- 示例词（真题高频，带词族/搭配/例句） ---------------- */
+function seedDemo() {
+  const now = Date.now();
+  const seeds = [
+    { word: "recognize", mean: "认出；承认；认可", family: "recognition / recognizable / recognized", col: "be recognized as", sentence: "He was widely ___ as the father of modern physics.", tags: ["理解", "作文"] },
+    { word: "address", mean: "处理；解决；向…讲话", family: "addressed / addressing", col: "address the issue", sentence: "The government must ___ the issue of youth unemployment.", tags: ["替换", "作文"] },
+    { word: "figure", mean: "认为；计算；数字", family: "figured / figure out", col: "figure out", sentence: "They ___ out a way to cut costs by 30 percent.", tags: ["理解", "替换"] },
+    { word: "critical", mean: "关键的；批判性的", family: "critically / criticism / criticize", col: "play a critical role in", sentence: "Education plays a ___ role in social mobility.", tags: ["作文", "替换"] },
+    { word: "sustain", mean: "维持；支撑", family: "sustainable / sustainability / sustained", col: "sustain growth", sentence: "It is hard to ___ such rapid growth over decades.", tags: ["作文"] },
+    { word: "subject", mean: "易受…影响的；主题；科目", family: "subjective / subject to", col: "be subject to", sentence: "All proposals are ___ to approval by the committee.", tags: ["理解"] },
+    { word: "notably", mean: "尤其；显著地", family: "notable / noted", col: "most notably", sentence: "Several countries, most ___ Japan and Germany, face an ageing crisis.", tags: ["替换"] },
+    { word: "authority", mean: "权力；当局；权威", family: "authorize / authoritative / authorities", col: "under the authority of", sentence: "Local ___ have tightened traffic rules.", tags: ["理解"] },
+    { word: "assume", mean: "假定；承担", family: "assumption / assumed / assuming", col: "assume responsibility for", sentence: "We should not ___ that everyone has equal access to the internet.", tags: ["作文", "理解"] },
+    { word: "compound", mean: "使恶化；复合的", family: "compounded / compounding", col: "be compounded by", sentence: "The shortage was ___ by poor planning.", tags: ["理解"] },
+    { word: "derive", mean: "获得；源于", family: "derivative / derive from", col: "derive from", sentence: "Much of our knowledge is ___ from experience.", tags: ["替换"] },
+    { word: "prompt", mean: "促使；迅速的", family: "promptly / prompting", col: "prompt sb to do", sentence: "The report ___ the public to question official figures.", tags: ["作文", "替换"] }
+  ];
+  let added = 0;
+  seeds.forEach(s => {
+    if (DB.words.some(w => w.word.toLowerCase() === s.word.toLowerCase())) return;
+    DB.words.push(Object.assign({
+      id: uid(), stage: 0, ease: 2.5, interval: 0, lapses: 0, correctRun: 0,
+      due: now, created: now, reviews: 0
+    }, s));
+    added++;
+  });
+  ensureToday();
+  save();
+  toast(`装了 ${added} 个示例词`);
+}
+
+/* ---------------- 启动 ---------------- */
+function boot() {
+  load();
+  ensureToday();
+  initNewForm();
+  go("home");
+  renderHome();
+
+  $$("nav button").forEach(b => b.onclick = () => go(b.dataset.v));
+  $("#btnMenu").onclick = openMenu;
+  $("#btnStartReview").onclick = startReview;
+  $("#btnGoNew").onclick = () => go("new");
+  $("#btnGoCloze").onclick = () => go("cloze");
+  $("#btnQuiz").onclick = startQuiz;
+
+  // service worker
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  // 每分钟检查一次到期队列角标
+  setInterval(() => {
+    if (document.querySelector("#v-home").classList.contains("on")) renderHome();
+  }, 60000);
+}
+
+document.addEventListener("DOMContentLoaded", boot);
+</script>
+</body>
+</html>
