@@ -15,3 +15,7 @@ desktop.ini
 
 # 临时调试脚本
 debug.mjs
+
+# 发布产物
+dist/
+_site_test/

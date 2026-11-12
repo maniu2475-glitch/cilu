@@ -15,16 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 只把运行所需的静态文件挑出来，源码和工具脚本不发布
+      - name: Stage site files
+        run: |
+          mkdir -p _site/icons
+          cp index.html manifest.json sw.js .nojekyll _site/
+          cp icons/*.png _site/icons/
+          echo "--- staged ---"
+          find _site -type f | sort
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
       - id: deployment
         uses: actions/deploy-pages@v4
