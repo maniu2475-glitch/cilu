@@ -11,7 +11,14 @@ let pass = 0, fail = 0;
 const out = [];
 const ok = (n, c, e = '') => { c ? pass++ : fail++; out.push(`${c ? 'PASS' : 'FAIL'}  ${n}  ${c ? '' : e}`); };
 
-const browser = await chromium.launch({ headless: true, executablePath: CHROME });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: CHROME,
+  // github.io 需走本机代理；localhost 场景无影响
+  proxy: BASE.includes('localhost') || BASE.includes('127.0.0.1')
+    ? undefined
+    : { server: 'http://127.0.0.1:7893' }
+});
 const ctx = await browser.newContext({
   viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
   locale: 'zh-CN', timezoneId: 'Asia/Shanghai'
@@ -22,8 +29,8 @@ page.on('pageerror', e => netErr.push('PAGEERROR ' + e.message));
 page.on('response', r => { if (r.status() >= 400) netErr.push(`HTTP ${r.status()} ${r.url()}`); });
 
 // ---------- 1. 安全上下文 ----------
-await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-await page.waitForTimeout(500);
+await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(2500);
 const sec = await page.evaluate(() => ({
   isSecure: window.isSecureContext,
   hasSW: 'serviceWorker' in navigator,
